@@ -9,3 +9,5 @@ This script was conceived to create MIDI commands from CV values generated in VC
 - Connect the CV output of your sequencer/note generator to the Value input of `/ch/1` as if it is a 1 oct/CV input and your gate to `/ch/2`.
 - Launch your script with explicit niceness, in order to get decent timing: `nice -n -15 python3 path-to-script/osc-to-midi.py` 
 - Click on `Config` button on cvOSCcv and then `Enable` the OSC client
+
+![Setup Example](example.png)

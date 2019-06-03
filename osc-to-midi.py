@@ -5,17 +5,19 @@ import mido
 from pythonosc import dispatcher
 from pythonosc import osc_server
 
-"""
-def print_compute_handler(unused_addr, args, volume):
-  try:
-    print("[{0}] ~ {1}".format(args[0], args[1](volume)))
-  except ValueError: pass
-"""
+outs = mido.get_output_names()
 
-#outport = mido.open_output('Midi Through:Midi Through Port-0 14:0')
-#outport = mido.open_output('CH345:CH345 MIDI 1 20:0')  # <--- for linux
-#outport = mido.open_output('USB2.0-MIDI   Porta 2') # <--- for mac
-outport = mido.open_output('E-MU 0404 | USB')
+print('Select a MIDI OUT port:')
+count = 0
+for o in outs:
+    print('[',count,']:\t', o)
+    count += 1
+
+s = int(input('--> '))
+
+outport = outs[s]
+
+print('Sending MIDI to \'', outport, '\'')
 
 in_midi_note = 60
 play_midi_note = 60
@@ -30,9 +32,6 @@ def cv_to_midi_handler(unused_addr, args, V):
         if V >= -5 and V <= 5: 
             # interpolate the Volts value in the relative MIDI note value
             in_midi_note = int(round(interp(V, [-5,5], [0,120])))
-            
-            
-
     except ValueError: pass
 
 def note_gate_handler(unused_addr, args, G):
@@ -50,6 +49,8 @@ def note_gate_handler(unused_addr, args, G):
 
     except ValueError: pass
 
+
+# EXPERIMENTAL!! (i.e. it doesn't work yet)
 def bpm_cv_handler(unused_addr, args, V):
     try:
         if V <= 1.32 and V >= -2.00:

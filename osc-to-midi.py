@@ -1,5 +1,6 @@
 from numpy import interp
-from time import sleep
+import time
+import sched
 from math import ceil
 import mido
 from pythonosc import dispatcher
@@ -15,16 +16,24 @@ for o in outs:
 
 s = int(input('--> '))
 
-outport = outs[s]
+port_name = outs[s]
 
-print('Sending MIDI to \'', outport, '\'')
+print('Sending MIDI to \'', port_name, '\'')
+
+outport = mido.open_output(port_name)
 
 in_midi_note = 60
 play_midi_note = 60
 
-#create mido message
+run_state = False
+us_clock_itvl = (60*10**6)/(24*120)
+
+#create mido messages
 msg_note_on = mido.Message('note_on', note=60)
 msg_note_off = mido.Message('note_off', note=60) 
+msg_start = mido.Message('start')
+msg_stop = mido.Message('stop')
+msg_clock = mido.Message('clock')
 
 def cv_to_midi_handler(unused_addr, args, V):
     global in_midi_note
@@ -51,13 +60,25 @@ def note_gate_handler(unused_addr, args, G):
 
 
 # EXPERIMENTAL!! (i.e. it doesn't work yet)
+
+msg_sched = sched.scheduler(time.time, time.sleep)
+
+def send_clock():
+    outport.send(msg_clock)
+    # schedule new event
+    msg_sched.enter(us_clock_itvl/10**6, 1, send_clock)
+    #print('clock')
+
+
 def bpm_cv_handler(unused_addr, args, V):
     try:
+        global us_clock_itvl
+
         if V <= 1.32 and V >= -2.00:
             bpm = int(round(120 * 2**V))
-            #print(V, bpm)
             
             us_clock_itvl = (60*10**6)/(24*bpm)
+            print(V, bpm, us_clock_itvl)
             """
             msg_tempo = mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm))
             msg_start = mido.Message('start')
@@ -66,21 +87,38 @@ def bpm_cv_handler(unused_addr, args, V):
             #outport.send(msg_start)
             """
 
-            
-            msg_clock = mido.Message('clock')
-            #print(msg_clock)
-            while 1:
-                outport.send(msg_clock)
-                sleep(us_clock_itvl*10**-6)
-                #print(mido.bpm2tempo(bpm)*10**-6, msg_clock)
-            
+    except ValueError: pass
+
+def run_trig_handler(unused_addr, args, T):
+    global run_state
+    try:
+        
+        if T > 0.0:
+            run_state = not run_state
+            print('Run', run_state)
+            if run_state:
+                msg_sched.enter(us_clock_itvl/10**6, 1, send_clock)
+                outport.send(msg_start)
+                outport.send(msg_clock) #send first clock together with start msg
+
+                msg_sched.run()
+                
+            else:
+                # clear the event queue (for already scheduled clock events)
+                list(map(msg_sched.cancel, msg_sched.queue))
+                # stop the clock
+                outport.send(msg_stop)
+
+
 
     except ValueError: pass
+
 
 dispatcher = dispatcher.Dispatcher()
 dispatcher.map("/trowacv/ch/1", cv_to_midi_handler, 'Volts')
 dispatcher.map("/trowacv/ch/2", note_gate_handler, 'Gate')
 dispatcher.map("/trowacv/ch/3", bpm_cv_handler, 'Bpm')
+dispatcher.map("/trowacv/ch/4", run_trig_handler, 'Run')
 
 #dispatcher.map("/logvolume", print_compute_handler, "Log volume", math.log)
 

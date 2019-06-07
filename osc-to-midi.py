@@ -62,12 +62,16 @@ def note_gate_handler(unused_addr, args, G):
 # EXPERIMENTAL!! (i.e. it doesn't work yet)
 
 msg_sched = sched.scheduler(time.time, time.sleep)
-
+pt = time.time()
 def send_clock():
+    global pt
     outport.send(msg_clock)
     # schedule new event
     msg_sched.enter(us_clock_itvl/10**6, 1, send_clock)
     #print('clock')
+    #now = time.time()
+    #print(now-pt)
+    #pt = now
 
 
 def bpm_cv_handler(unused_addr, args, V):
@@ -97,21 +101,27 @@ def run_trig_handler(unused_addr, args, T):
             run_state = not run_state
             print('Run', run_state)
             if run_state:
-                msg_sched.enter(us_clock_itvl/10**6, 1, send_clock)
+                print('Clock @', us_clock_itvl/10**6)
+                # msg_sched.enter(us_clock_itvl/10**6, 1, send_clock)
                 outport.send(msg_start)
-                outport.send(msg_clock) #send first clock together with start msg
-
-                msg_sched.run()
+                # outport.send(msg_clock) #send first clock together with start msg
+                # msg_sched.run()
                 
             else:
                 # clear the event queue (for already scheduled clock events)
                 list(map(msg_sched.cancel, msg_sched.queue))
                 # stop the clock
                 outport.send(msg_stop)
+    except ValueError: pass
 
-
+def clock_handler(unused_addr, args, G):
+    try:
+        if G == 10.0:
+            outport.send(msg_clock)
 
     except ValueError: pass
+
+
 
 
 dispatcher = dispatcher.Dispatcher()
@@ -119,7 +129,7 @@ dispatcher.map("/trowacv/ch/1", cv_to_midi_handler, 'Volts')
 dispatcher.map("/trowacv/ch/2", note_gate_handler, 'Gate')
 dispatcher.map("/trowacv/ch/3", bpm_cv_handler, 'Bpm')
 dispatcher.map("/trowacv/ch/4", run_trig_handler, 'Run')
-
+dispatcher.map("/trowacv/ch/5", clock_handler, 'Clock')
 #dispatcher.map("/logvolume", print_compute_handler, "Log volume", math.log)
 
 

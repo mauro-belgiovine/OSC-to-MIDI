@@ -4,7 +4,7 @@ A simple script to receive notes and gates messages over Open Sound Control (OSC
 ## How to use it
 This script was conceived to create MIDI commands from CV values generated in VCV Rack and sent over OSC, through the almighty cvOSCcv module. 
 
-### Setup:
+### Setup
 - Load cvOSCcv into VCV Rack
 - Connect the CV output of your sequencer/note generator to the Value input of `/ch/1` as if it is a 1 oct/CV input and the gate source to `/ch/2`.
 - Connect your Run gate output to `/ch/4`, in order to start/stop the clock on the external hardware. This will invert the value of a boolean variable that is used to track the running/idle state of the clock, whenever a gate is received. NOTE: the initial state is idle, so make sure that your clock is not running when launching this script.
